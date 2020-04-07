@@ -48,7 +48,7 @@ module.exports.setup = function setup(
   // Add our session function and passport to our app's
   // middleware
   logger.silly('adding session and Passport middleware');
-  app.use(session);
+  // app.use(session);
   app.use(passport.initialize());
   app.use(passport.session());
 

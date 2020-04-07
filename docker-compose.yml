@@ -43,6 +43,7 @@ services:
       - DISABLE_SAME_SITE=yes
       - DISABLE_SECURE_COOKIE=yes
       - LOG_LEVEL=silly
+      - LOG_CONSOLE=true
     volumes:
       - type: bind
         source: ./api
