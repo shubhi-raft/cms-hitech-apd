@@ -43,16 +43,16 @@ export const login = (username, password) => dispatch => {
 
   return axios
     .post('/auth/login/nonce', { username })
-    .then(req =>
+    .then(res =>
       axios.post('/auth/login', {
-        username: req.data.nonce,
+        username: res.data.nonce,
         password
       })
     )
-    .then(req => {
-      localStorage.setItem('token', req.data.token);
-      dispatch(completeLogin(req.data.user));
-      dispatch(loadData(req.data.user.activities));
+    .then(res => {
+      localStorage.setItem('token', res.data.token);
+      dispatch(completeLogin(res.data.user));
+      dispatch(loadData(res.data.user.activities));
     })
     .catch(error => {
       const reason = error.response ? error.response.data : 'N/A';

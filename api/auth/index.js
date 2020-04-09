@@ -14,11 +14,12 @@ const defaultStrategies = [
   new JwtStrategy(jwtOptions, serialization.deserializeUser)
 ];
 
-// This setup method configures passport and inserts it into
-// the express middleware. After a successful authentication,
-// passport will store a serialized representation of the user
-// in a session, which (as configured here, by default) is a
-// browser cookie.
+// This setup method configures passport and inserts it into the express
+// middleware. After a successful authentication via 'POST /auth/login',
+// the api responds with...
+//   * a JWT containing the session id, to be stored by the front-end, and sent
+//     in the Authentication header of each subsequent request
+//   * a (serialized) JSON representation of the user
 //
 // In endpoint handlers, the req.user variable will be set
 // to the deserialized user object if the user is
@@ -51,9 +52,6 @@ module.exports.setup = function setup(
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Pull JWT from HTTP headers and deserialize.
-  app.use(passport.authenticate('jwt'));
-
   logger.silly('setting up a logout handler');
   app.get('/auth/logout', (req, res) => {
     if (req.session && req.session.passport) {
@@ -80,6 +78,8 @@ module.exports.setup = function setup(
     const sessionId = req.session.passport.user;
     const token = signWebToken({ payload: sessionId });
     res.send({ token: token, user: req.user });
-    // res.send(req.user)
   });
+
+  // Pull JWT from HTTP headers and deserialize.
+  app.use(passport.authenticate('jwt'));
 };
