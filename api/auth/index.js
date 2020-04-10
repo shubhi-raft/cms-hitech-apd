@@ -52,16 +52,6 @@ module.exports.setup = function setup(
   app.use(passport.initialize());
   app.use(passport.session());
 
-  logger.silly('setting up a logout handler');
-  app.get('/auth/logout', (req, res) => {
-    if (req.session && req.session.passport) {
-      removeSession(req.session.passport.user);
-    }
-    req.logout();
-    session.destroy();
-    res.status(200).end();
-  });
-
   logger.silly('setting up local login nonce-fetcher');
   app.post('/auth/login/nonce', (req, res) => {
     if (req.body && req.body.username) {
@@ -75,11 +65,26 @@ module.exports.setup = function setup(
   // Add a local authentication endpoint
   logger.silly('setting up a local login handler');
   app.post('/auth/login', passport.authenticate('local'), (req, res) => {
+    let user = req.user;
+    console.log({ user })
     const sessionId = req.session.passport.user;
     const token = signWebToken({ payload: sessionId });
-    res.send({ token: token, user: req.user });
+    res.send({
+      token: token,
+      user: req.user
+    });
   });
 
   // Pull JWT from HTTP headers and deserialize.
   app.use(passport.authenticate('jwt'));
+
+  logger.silly('setting up a logout handler');
+  app.get('/auth/logout', (req, res) => {
+    if (req.session && req.session.passport) {
+      removeSession(req.session.passport.user);
+    }
+    req.logout();
+    session.destroy();
+    res.status(200).end();
+  });
 };

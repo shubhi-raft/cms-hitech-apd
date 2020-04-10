@@ -5,15 +5,14 @@ const { getUserByID: gu } = require('../db');
 
 const { addUserSession, getUserIDFromSession } = require('./sessionStore');
 
-// Serialize a user into a stringy type that will get
-// pushed into their session cookie.
+// Serialize a user into a stringy type that will get stored on the front-end.
 module.exports.serializeUser = async (
   user,
   done,
   { sessionStore: { addSession = addUserSession } = {} } = {}
 ) => {
   logger.silly(`serializing a user with id ${user.id}`);
-  const sessionID = await addSession(user.id);
+  const sessionID = await addSession(user.id);  // should be findOrCreateSession(user.id)
   logger.silly(`session ID = ${sessionID}`);
   done(null, sessionID);
 };

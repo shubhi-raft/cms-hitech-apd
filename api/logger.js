@@ -58,12 +58,13 @@ module.exports = name => {
     // try to log EVERY object as a request
     if (req && typeof req !== 'string') {
       requestInfo = {
-        requestID: req.id,
-        authHeader: req.get('Authorization')
+        requestID: req.id
       };
-      if (req.user) {
-        requestInfo.userID = req.user.id;
-      }
+
+      if (req.user) requestInfo.userID = req.user.id;
+
+      let jwt = req.get("Authorization")
+      if (jwt) requestInfo.authorizationHeader = jwt
     }
     winston.Logger.prototype.log.apply(logger, [level, ...args, requestInfo]);
   };
