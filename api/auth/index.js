@@ -5,7 +5,6 @@ const JwtStrategy = require('passport-jwt').Strategy;
 const logger = require('../logger')('auth index');
 const authenticate = require('./authenticate');
 const serialization = require('./serialization');
-const sessionFunction = require('./session')();
 const { removeUserSession } = require('./sessionStore');
 const { signWebToken, jwtOptions } = require('./jwtUtils');
 
@@ -33,7 +32,6 @@ module.exports.setup = function setup(
     passport = Passport,
     removeSession = removeUserSession,
     serializeUser = serialization.serializeUser,
-    session = sessionFunction,
     strategies = defaultStrategies
   } = {}
 ) {
@@ -43,8 +41,8 @@ module.exports.setup = function setup(
 
   // Register our user serialization methods with passport
   logger.silly('setting up our user serializer with Passport');
-  passport.serializeUser(serializeUser);
-  passport.deserializeUser(deserializeUser);
+  // passport.serializeUser(serializeUser);  // user -> sessionID
+  passport.deserializeUser(deserializeUser);  // JWT w/ sessionID -> user
 
   // Add our session function and passport to our app's
   // middleware
@@ -64,11 +62,12 @@ module.exports.setup = function setup(
 
   // Add a local authentication endpoint
   logger.silly('setting up a local login handler');
-  app.post('/auth/login', passport.authenticate('local'), (req, res) => {
+  app.post('/auth/login', passport.authenticate('local', { session: false }), (req, res) => {
     let user = req.user;
     console.log({ user })
-    const sessionId = req.session.passport.user;
-    const token = signWebToken({ payload: sessionId });
+    const sessionId = serializeUser(user);
+    console.log({ sessionId })
+    const token = signWebToken({ sub: sessionId });
     res.send({
       token: token,
       user: req.user
@@ -76,15 +75,14 @@ module.exports.setup = function setup(
   });
 
   // Pull JWT from HTTP headers and deserialize.
-  app.use(passport.authenticate('jwt'));
+  app.use(passport.authenticate('jwt', { session: false }));
 
   logger.silly('setting up a logout handler');
   app.get('/auth/logout', (req, res) => {
-    if (req.session && req.session.passport) {
-      removeSession(req.session.passport.user);
-    }
+    const jwt = req.get('Authorization').replace('Bearer ');
+    const payload = verifyWebToken(jwt);
+    removeSession(payload.sub);
     req.logout();
-    session.destroy();
     res.status(200).end();
   });
 };

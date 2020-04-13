@@ -3,23 +3,23 @@
 const logger = require('../logger')('user serialization');
 const { getUserByID: gu } = require('../db');
 
-const { addUserSession, getUserIDFromSession } = require('./sessionStore');
+const { addUserSession, findOrCreateUserSession, getUserIDFromSession } = require('./sessionStore');
 
 // Serialize a user into a stringy type that will get stored on the front-end.
 module.exports.serializeUser = async (
   user,
   done,
-  { sessionStore: { addSession = addUserSession } = {} } = {}
+  { sessionStore: { findOrCreateSession = findOrCreateUserSession } = {} } = {}
 ) => {
   logger.silly(`serializing a user with id ${user.id}`);
-  const sessionID = await addSession(user.id);  // should be findOrCreateSession(user.id)
+  const sessionID = await findOrCreateSession(user.id);
   logger.silly(`session ID = ${sessionID}`);
   done(null, sessionID);
 };
 
 // Deserialize a session from the user's JWT into a user object.
 module.exports.deserializeUser = async (
-  { payload: sessionID },
+  payload,
   done,
   {
     getUserByID = gu,
@@ -27,6 +27,7 @@ module.exports.deserializeUser = async (
   } = {}
 ) => {
   try {
+    logger.silly({ payload });
     logger.silly(`attempting to deserialize a user, session = ${sessionID}`);
 
     const userID = await getUserID(sessionID);

@@ -63,8 +63,8 @@ module.exports = name => {
 
       if (req.user) requestInfo.userID = req.user.id;
 
-      let jwt = req.get("Authorization")
-      if (jwt) requestInfo.authorizationHeader = jwt
+      // let jwt = req.get("Authorization")
+      // if (jwt) requestInfo.authorizationHeader = jwt
     }
     winston.Logger.prototype.log.apply(logger, [level, ...args, requestInfo]);
   };

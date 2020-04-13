@@ -7,6 +7,17 @@ const { raw: knex } = require('../db');
 const sessionLifetimeMilliseconds =
   +process.env.SESSION_LIFETIME_MINUTES * 60 * 1000;
 
+const extendSession = async (sessionID, { db = knex } = {}) => {
+  logger.silly(`extending session lifetime for sessionID ${sessionID}`);
+  try {
+    await db('auth_sessions')
+    .where('session_id', sessionID)
+    .update({ expiration: Date.now() + sessionLifetimeMilliseconds });
+  } catch (e) {
+    logger.error('error extending session', e);
+  }
+}
+
 const removeExpired = async ({ db = knex } = {}) => {
   logger.silly('removing expired sessions');
   try {
@@ -58,8 +69,9 @@ const addUserSession = async (userID, { db = knex } = {}) => {
  */
 const getUserIDFromSession = async (sessionID, { db = knex } = {}) => {
   await removeExpired({ db });
-  logger.silly(`fetching user ID for session ${sessionID}`);
+  if (!sessionID) return null;
 
+  logger.silly(`fetching user ID for session ${sessionID}`);
   try {
     const session = await db('auth_sessions')
       .where('session_id', sessionID)
@@ -69,10 +81,7 @@ const getUserIDFromSession = async (sessionID, { db = knex } = {}) => {
 
     if (session) {
       logger.silly(`got user ID ${session.user_id}`);
-      logger.silly(`extending session lifetime`);
-      await db('auth_sessions')
-        .where('session_id', sessionID)
-        .update({ expiration: Date.now() + sessionLifetimeMilliseconds });
+      await extendSession(session.id);
       return session.user_id;
     }
   } catch (e) {
@@ -101,8 +110,36 @@ const removeUserSession = async (sessionID, { db = knex } = {}) => {
   }
 };
 
+const findOrCreateUserSession = async (userID, { db = knex } = {}) => {
+  await removeExpired({ db });
+  logger.silly(`fetching session ID for user ${userID}`);
+
+  try {
+    const session = await db('auth_sessions')
+      .where('user_id', userID)
+      .andWhere('expiration', '>', Date.now())
+      .select('session_id')
+      .first();
+
+    if (session) {
+      logger.silly(`got user ID ${session.user_id}`);
+      await extendSession(session.id);
+      return session.id;
+    } else {
+      const sessionID = await addUserSession(userID);
+      return sessionID;
+    }
+  } catch (e) {
+    logger.error(`error getting session for user ${userID}`, e);
+  }
+
+  logger.silly(`no session`);
+  return null;
+}
+
 module.exports = {
   addUserSession,
+  findOrCreateUserSession,
   getUserIDFromSession,
   removeUserSession
 };
